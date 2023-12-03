@@ -60,33 +60,33 @@ func main() {
 		}
 
 		for _, starIdx := range nsLines[i].starsIdxs {
-			currCandIdxs, prevCandIdxs, nextCandIdxs := getNeighbourPositions(starIdx)
-			if len(currCandIdxs) > 2 {
-				log.Fatal("length too high:", currCandIdxs)
+			currLineNeighbours, prevLineNeighbours, nextLineNeighbours := getNeighbourPositions(starIdx)
+			if len(currLineNeighbours) > 2 {
+				log.Fatal("length too high:", currLineNeighbours)
 			}
 
 			gear := []int{}
 
 			for _, n := range prevLineNumbers {
-				if n.isPartiallyInRange(prevCandIdxs) {
+				if n.isPartiallyInRange(prevLineNeighbours) {
 					gear = append(gear, n.value)
 				}
 			}
 
 			for _, n := range nextLineNumbers {
-				if n.isPartiallyInRange(nextCandIdxs) {
+				if n.isPartiallyInRange(nextLineNeighbours) {
 					gear = append(gear, n.value)
 				}
 			}
 
-			bef := currCandIdxs[0]
+			bef := currLineNeighbours[0]
 			for _, n := range nsLines[i].numbers {
 				if n.endIdx == bef {
 					gear = append(gear, n.value)
 				}
 			}
 
-			aft := currCandIdxs[1]
+			aft := currLineNeighbours[1]
 			for _, n := range nsLines[i].numbers {
 				if n.startIdx == aft {
 					gear = append(gear, n.value)
