@@ -48,8 +48,6 @@ func main() {
 	}
 
 	sum := 0
-	// graph := ds.NewGraph[int, int]()
-
 	for i := 0; i < len(nsLines); i++ {
 		prevLineNumbers := []Number{}
 		if i > 0 {
@@ -67,42 +65,44 @@ func main() {
 				log.Fatal("length too high:", currCandIdxs)
 			}
 
-			gears := []int{}
+			gear := []int{}
 
 			for _, n := range prevLineNumbers {
 				if n.isPartiallyInRange(prevCandIdxs) {
-					gears = append(gears, n.value)
+					gear = append(gear, n.value)
 				}
 			}
 
 			for _, n := range nextLineNumbers {
 				if n.isPartiallyInRange(nextCandIdxs) {
-					gears = append(gears, n.value)
+					gear = append(gear, n.value)
 				}
 			}
 
 			bef := currCandIdxs[0]
 			for _, n := range nsLines[i].numbers {
 				if n.endIdx == bef {
-					gears = append(gears, n.value)
+					gear = append(gear, n.value)
 				}
 			}
 
 			aft := currCandIdxs[1]
 			for _, n := range nsLines[i].numbers {
 				if n.startIdx == aft {
-					gears = append(gears, n.value)
+					gear = append(gear, n.value)
 				}
 			}
 
-			if len(gears) >= 3 {
-				log.Println("line", i+1, ":", gears)
+			// UNRECOGNIZED
+			if len(gear) >= 3 {
+				log.Println("line", i+1, ":", gear)
 				log.Fatal("there are more than 2 neighbours")
 			}
 
-			if len(gears) == 2 {
-				gearRatio := gears[0] * gears[1]
-				log.Println("line", i+1, ":", gears[0], "*", gears[1], "=", gearRatio)
+			// IS VALID GEAR
+			if len(gear) == 2 {
+				gearRatio := gear[0] * gear[1]
+				log.Println("line", i+1, ":", gear[0], "*", gear[1], "=", gearRatio)
 				sum += gearRatio
 			}
 		}
