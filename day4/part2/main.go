@@ -10,7 +10,6 @@ import (
 )
 
 type Game struct {
-	ID      string
 	numbers []int
 	winning []int
 }
@@ -30,21 +29,8 @@ func main() {
 	}
 
 	sum := 0
-	for _, g := range games {
-		points := 0
-		for _, n := range g.numbers {
-			if slices.Contains(g.winning, n) {
-				if points == 0 {
-					points++
-				} else {
-					points *= 2
-				}
-			}
-		}
-
-		fmt.Println(g.ID, g.numbers, g.winning, "|", points)
-
-		sum += points
+	for i := range games {
+		sum += processGame(games, i)
 	}
 
 	fmt.Println("RESULT:", sum)
@@ -52,10 +38,7 @@ func main() {
 
 func gameFromString(line string) Game {
 	split := strings.Split(line, ":")
-	head := split[0]
 	body := split[1]
-
-	ID := strings.Split(head, " ")[1]
 
 	body = strings.Replace(body, "  ", " ", -1)
 	split = strings.Split(body, "|")
@@ -65,30 +48,51 @@ func gameFromString(line string) Game {
 	numbersStrArr := strings.Split(numbersStr, " ")
 	winningStrArr := strings.Split(winningStr, " ")
 
-	numbers := make([]int, len(numbersStrArr))
-	winning := make([]int, len(winningStrArr))
-
-	for i, numStr := range numbersStrArr {
-		num, err := strconv.Atoi(numStr)
-		if err != nil {
-			log.Fatal("error while converting number", err)
-		}
-
-		numbers[i] = num
-	}
-
-	for i, winStr := range winningStrArr {
-		num, err := strconv.Atoi(winStr)
-		if err != nil {
-			log.Fatal("error while converting number", err)
-		}
-
-		winning[i] = num
-	}
+	numbers := stringSliceToNumbers(numbersStrArr)
+	winning := stringSliceToNumbers(winningStrArr)
 
 	return Game{
-		ID:      ID,
 		numbers: numbers,
 		winning: winning,
 	}
+}
+
+func getWinningPoints(game Game) int {
+	points := 0
+
+	for _, n := range game.numbers {
+		if slices.Contains(game.winning, n) {
+			points++
+		}
+	}
+
+	return points
+}
+
+func processGame(games []Game, idx int) int {
+	sum := 1
+	points := getWinningPoints(games[idx])
+
+	if points > 0 {
+		for i := idx + 1; i <= idx+points; i++ {
+			sum += processGame(games, i)
+		}
+	}
+
+	return sum
+}
+
+func stringSliceToNumbers(strSl []string) []int {
+	nums := make([]int, len(strSl))
+
+	for i, strNum := range strSl {
+		num, err := strconv.Atoi(strNum)
+		if err != nil {
+			log.Fatal("error while converting number", err)
+		}
+
+		nums[i] = num
+	}
+
+	return nums
 }

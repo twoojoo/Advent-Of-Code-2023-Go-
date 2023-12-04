@@ -10,7 +10,6 @@ import (
 )
 
 type Game struct {
-	ID      string
 	numbers []int
 	winning []int
 }
@@ -42,8 +41,6 @@ func main() {
 			}
 		}
 
-		fmt.Println(g.ID, g.numbers, g.winning, "|", points)
-
 		sum += points
 	}
 
@@ -52,10 +49,7 @@ func main() {
 
 func gameFromString(line string) Game {
 	split := strings.Split(line, ":")
-	head := split[0]
 	body := split[1]
-
-	ID := strings.Split(head, " ")[1]
 
 	body = strings.Replace(body, "  ", " ", -1)
 	split = strings.Split(body, "|")
@@ -65,30 +59,26 @@ func gameFromString(line string) Game {
 	numbersStrArr := strings.Split(numbersStr, " ")
 	winningStrArr := strings.Split(winningStr, " ")
 
-	numbers := make([]int, len(numbersStrArr))
-	winning := make([]int, len(winningStrArr))
-
-	for i, numStr := range numbersStrArr {
-		num, err := strconv.Atoi(numStr)
-		if err != nil {
-			log.Fatal("error while converting number", err)
-		}
-
-		numbers[i] = num
-	}
-
-	for i, winStr := range winningStrArr {
-		num, err := strconv.Atoi(winStr)
-		if err != nil {
-			log.Fatal("error while converting number", err)
-		}
-
-		winning[i] = num
-	}
+	numbers := stringSliceToNumbers(numbersStrArr)
+	winning := stringSliceToNumbers(winningStrArr)
 
 	return Game{
-		ID:      ID,
 		numbers: numbers,
 		winning: winning,
 	}
+}
+
+func stringSliceToNumbers(strSl []string) []int {
+	nums := make([]int, len(strSl))
+
+	for i, strNum := range strSl {
+		num, err := strconv.Atoi(strNum)
+		if err != nil {
+			log.Fatal("error while converting number", err)
+		}
+
+		nums[i] = num
+	}
+
+	return nums
 }
