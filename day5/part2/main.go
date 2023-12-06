@@ -7,21 +7,32 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 )
+
+type SeedRange struct {
+	start int
+	end   int
+}
 
 type Mapping struct {
 	source      int
 	destination int
 	_range      int
+	sourceMax   int
 }
 
-type Mappings []Mapping
+type Mappings struct {
+	mappings  []Mapping
+	sourceMax int
+	sourceMin int
+}
 
 func (m Mappings) getDestination(source int) int {
-	for i := range m {
-		if source >= m[i].source && source < m[i].source+m[i]._range {
-			sourceRange := source - m[i].source
-			return m[i].destination + sourceRange
+	for i := range m.mappings {
+		max := m.mappings[i].source + m.mappings[i]._range
+		if source >= m.mappings[i].source && source < max {
+			return m.mappings[i].destination + (source - m.mappings[i].source)
 		}
 	}
 
@@ -45,38 +56,72 @@ func main() {
 		mappings[i] = getMappings(name, mappingLines)
 	}
 
+	//sees are a range of seeds now
 	seeds := getSeeds(lines)
 
+	wg := sync.WaitGroup{}
+
 	// dynamically iterate over all mappings in order for each seed
-	lowest := math.MaxInt
-	for _, seed := range seeds {
-		lastDest := seed
+	for i, seed := range seeds {
+		s := seed
+		l := i
+		//iterate over seed range (REALLY SLOW, MILIONS OF ROWS)
+		wg.Add(1)
+		go func() {
+			lowest := math.MaxInt
+			_range := s.end - s.start
+			fmt.Println("seed", l, "range", _range)
+			for i := 0; i < _range; i++ {
 
-		for _, mapping := range mappings {
-			lastDest = mapping.getDestination(lastDest)
-		}
+				lastDest := s.start + i
+				for j := range mappings {
+					if lastDest > mappings[j].sourceMax || lastDest < mappings[j].sourceMin {
+						continue
+					}
 
-		if lastDest < lowest {
-			lowest = lastDest
-		}
+					lastDest = mappings[j].getDestination(lastDest)
+				}
+
+				if lastDest < lowest {
+					lowest = lastDest
+				}
+			}
+
+			wg.Done()
+			fmt.Println("seed", l, "done:", lowest)
+		}()
+
 	}
-
-	fmt.Println(lowest)
+	wg.Wait()
 }
 
-func getSeeds(input []string) []int {
+func getSeeds(input []string) []SeedRange {
 	seedsLine := input[0]
 	seedsLine = strings.Split(seedsLine, ": ")[1]
 	seedsNumStr := strings.Split(seedsLine, " ")
 
-	seedsNum := []int{}
-	for i := range seedsNumStr {
-		num, err := strconv.Atoi(seedsNumStr[i])
+	seedsNum := make([]SeedRange, len(seedsNumStr)/2)
+	for i := 0; i < len(seedsNumStr); i += 2 {
+		end, err := strconv.Atoi(seedsNumStr[i])
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		seedsNum = append(seedsNum, num)
+		start, err := strconv.Atoi(seedsNumStr[i+1])
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if end < start {
+			temp := start
+			start = end
+			end = temp
+		}
+
+		seedsNum[i/2] = SeedRange{
+			start: start,
+			end:   end,
+		}
 	}
 
 	return seedsNum
@@ -113,7 +158,12 @@ func getMappings(name string, groupedLines [][]string) Mappings {
 		}
 	}
 
-	mappings := []Mapping{}
+	mappings := Mappings{
+		mappings:  []Mapping{},
+		sourceMax: math.MinInt,
+		sourceMin: math.MaxInt,
+	}
+
 	for i := range group {
 		if i == 0 {
 			continue
@@ -136,7 +186,15 @@ func getMappings(name string, groupedLines [][]string) Mappings {
 			log.Fatal(err)
 		}
 
-		mappings = append(mappings, Mapping{
+		if sourceNum+rangeNum > mappings.sourceMax {
+			mappings.sourceMax = sourceNum + rangeNum
+		}
+
+		if sourceNum < mappings.sourceMin {
+			mappings.sourceMin = sourceNum
+		}
+
+		mappings.mappings = append(mappings.mappings, Mapping{
 			_range:      rangeNum,
 			destination: destNum,
 			source:      sourceNum,
