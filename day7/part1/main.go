@@ -4,9 +4,20 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
+)
+
+const (
+	AllDifferent = iota
+	OnePair
+	TwoPairs
+	ThreeOfAKind
+	FullHouse
+	FourOfAKind
+	FiveOfAKind
 )
 
 type Game struct {
@@ -103,33 +114,29 @@ func getHandValue(hand []int) int {
 	seeds := countSeeds(hand)
 
 	if len(seeds) == 1 {
-		return 6 //5 of a kind
+		return FiveOfAKind
 	}
 
 	if len(seeds) == 5 {
-		return 0 // all different
+		return AllDifferent
 	}
 
 	if len(seeds) == 4 {
-		return 1 // 1 pair
+		return OnePair
 	}
 
 	if len(seeds) == 2 {
-		for k := range seeds {
-			if seeds[k] == 4 {
-				return 5 //4 of a kind
-			}
+		if _, ok := mapContains(seeds, 4); ok {
+			return FourOfAKind
 		}
-		return 4 //full house
+		return FullHouse
 	}
 
 	if len(seeds) == 3 {
-		for k := range seeds {
-			if seeds[k] == 3 {
-				return 3 //2 pairs
-			}
+		if _, ok := mapContains(seeds, 3); ok {
+			return ThreeOfAKind
 		}
-		return 2 //3 of a kind
+		return TwoPairs
 	}
 
 	log.Fatal("unknown case", seeds)
@@ -176,4 +183,21 @@ func countPoints(orederdGames map[int]Games) int {
 	}
 
 	return total
+}
+
+func mapContains[K, V comparable](m map[K]V, v V, excluding ...K) (K, bool) {
+	for k := range m {
+		if slices.Contains(excluding, k) {
+			continue
+		}
+
+		if val, ok := m[k]; ok {
+			if val == v {
+				return k, true
+			}
+		}
+	}
+
+	var zero K
+	return zero, false
 }

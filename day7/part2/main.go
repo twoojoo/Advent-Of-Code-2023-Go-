@@ -4,19 +4,24 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
 )
 
 const (
-	AllDifferent = 0
+	AllDifferent = iota
 	OnePair
 	TwoPairs
 	ThreeOfAKind
 	FullHouse
 	FourOfAKind
 	FiveOfAKind
+)
+
+const (
+	JokerVal = 1
 )
 
 type Game struct {
@@ -92,13 +97,17 @@ func linesToGames(lines []string) (games Games, err error) {
 			case "Q":
 				val = 12
 			case "J":
-				val = 11
+				val = JokerVal
 			case "T":
 				val = 10
 			default:
 				val, err = strconv.Atoi(char)
 				if err != nil {
 					return games, err
+				}
+
+				if val == JokerVal {
+					log.Fatal("invalid joker value")
 				}
 			}
 
@@ -110,6 +119,14 @@ func linesToGames(lines []string) (games Games, err error) {
 }
 
 func getHandValue(hand []int) int {
+	if !slices.Contains(hand, JokerVal) {
+		return getHandValueNoJokers(hand)
+	}
+
+	return getHandValueWithJokers(hand)
+}
+
+func getHandValueNoJokers(hand []int) int {
 	seeds := countSeeds(hand)
 
 	if len(seeds) == 1 {
@@ -117,80 +134,87 @@ func getHandValue(hand []int) int {
 	}
 
 	if len(seeds) == 5 {
-		if jokers, ok := seeds[11]; ok {
-			if jokers == 1 {
-				return OnePair
-			}
-			log.Fatal("impossible", seeds)
-		}
 		return AllDifferent
 	}
 
 	if len(seeds) == 4 {
-		if jokers, ok := seeds[11]; ok {
-			if jokers == 2 || jokers == 1 {
-				return ThreeOfAKind
-			}
-
-			log.Fatal("impossible", seeds)
-		}
-
-		return OnePair
-	}
-
-	if len(seeds) == 3 {
-		for k := range seeds {
-			if seeds[k] == 3 { //normally is 2 of a kind
-				if jokers, ok := seeds[11]; ok {
-					if jokers == 3 || jokers == 1 {
-						return FourOfAKind
-					}
-
-					if jokers == 2 {
-						return FiveOfAKind
-					}
-				}
-
-				return ThreeOfAKind
-			}
-		}
-
-		//should be one pair
-		if jokers, ok := seeds[11]; ok {
-			if jokers == 2 || jokers == 1 {
-				return ThreeOfAKind
-			}
-
-			log.Fatal("impossible", seeds)
-		}
-
 		return OnePair
 	}
 
 	if len(seeds) == 2 {
-		for k := range seeds {
-			if seeds[k] == 4 { //should be 4 of a kind
-				if _, ok := seeds[11]; ok {
-					// if jokers == 4 || jokers == 3 || jokers == 2 {
-					return FiveOfAKind
-					// }
-				}
-			}
+		if _, ok := mapContains(seeds, 4); ok {
+			return FourOfAKind
 		}
-
-		//should be full house
-		if _, ok := seeds[11]; ok {
-			// if jokers == 3 {
-			return FiveOfAKind
-			// }
-		}
-
 		return FullHouse
 	}
 
-	log.Fatal("unknown case", hand)
-	return 0
+	if len(seeds) == 3 {
+		if _, ok := mapContains(seeds, 3); ok {
+			return ThreeOfAKind
+		}
+		return TwoPairs
+	}
 
+	log.Fatal("unknown case", seeds)
+	return 0
+}
+
+func getHandValueWithJokers(hand []int) int {
+	seeds := countSeeds(hand)
+
+	var jokers int
+	if _, ok := seeds[JokerVal]; ok {
+		jokers = seeds[JokerVal]
+	} else {
+		log.Fatal("there should be jokers")
+	}
+
+	if jokers >= 4 {
+		return FiveOfAKind
+	}
+
+	if jokers == 3 {
+		if _, ok := mapContains(seeds, 2); ok {
+			return FiveOfAKind
+		}
+
+		return FourOfAKind
+	}
+
+	if jokers == 2 {
+		if _, ok := mapContains(seeds, 3); ok {
+			return FiveOfAKind
+		}
+
+		if _, ok := mapContains(seeds, 2, JokerVal); ok {
+			return FullHouse
+		}
+
+		return ThreeOfAKind
+	}
+
+	if jokers == 1 {
+		if _, ok := mapContains(seeds, 4); ok {
+			return FiveOfAKind
+		}
+
+		if _, ok := mapContains(seeds, 3); ok {
+			return FullHouse
+		}
+
+		if k, ok := mapContains(seeds, 2); ok {
+			if _, ok := mapContains(seeds, 2, k); ok {
+				return FullHouse
+			}
+
+			return FourOfAKind
+		}
+
+		return OnePair
+	}
+
+	log.Panic("unknown", hand)
+	return 0
 }
 
 func countSeeds(slice []int) map[int]int {
@@ -233,4 +257,21 @@ func countPoints(orederdGames map[int]Games) int {
 	}
 
 	return total
+}
+
+func mapContains[K, V comparable](m map[K]V, v V, excluding ...K) (K, bool) {
+	for k := range m {
+		if slices.Contains(excluding, k) {
+			continue
+		}
+
+		if val, ok := m[k]; ok {
+			if val == v {
+				return k, true
+			}
+		}
+	}
+
+	var zero K
+	return zero, false
 }
