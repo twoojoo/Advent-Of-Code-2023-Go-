@@ -160,61 +160,22 @@ func getHandValueNoJokers(hand []int) int {
 }
 
 func getHandValueWithJokers(hand []int) int {
-	seeds := countSeeds(hand)
+	orderdSeeds, jokersCount := orderSeedsByFrequenceAndGetJokers(hand)
 
-	var jokers int
-	if _, ok := seeds[JokerVal]; ok {
-		jokers = seeds[JokerVal]
-	} else {
-		log.Fatal("there should be jokers")
-	}
-
-	if jokers >= 4 {
+	if len(orderdSeeds) == 0 {
 		return FiveOfAKind
 	}
 
-	if jokers == 3 {
-		if _, ok := mapContains(seeds, 2); ok {
-			return FiveOfAKind
-		}
-
-		return FourOfAKind
+	mostFrequent := orderdSeeds[0]
+	for i := 0; i < jokersCount; i++ {
+		orderdSeeds = slices.Insert(orderdSeeds, 0, mostFrequent)
 	}
 
-	if jokers == 2 {
-		if _, ok := mapContains(seeds, 3); ok {
-			return FiveOfAKind
-		}
-
-		if _, ok := mapContains(seeds, 2, JokerVal); ok {
-			return FullHouse
-		}
-
-		return ThreeOfAKind
+	if len(orderdSeeds) != 5 {
+		log.Fatal("something wrong:", orderdSeeds)
 	}
 
-	if jokers == 1 {
-		if _, ok := mapContains(seeds, 4); ok {
-			return FiveOfAKind
-		}
-
-		if _, ok := mapContains(seeds, 3); ok {
-			return FullHouse
-		}
-
-		if k, ok := mapContains(seeds, 2); ok {
-			if _, ok := mapContains(seeds, 2, k); ok {
-				return FullHouse
-			}
-
-			return FourOfAKind
-		}
-
-		return OnePair
-	}
-
-	log.Panic("unknown", hand)
-	return 0
+	return getHandValueNoJokers(orderdSeeds)
 }
 
 func countSeeds(slice []int) map[int]int {
@@ -229,6 +190,33 @@ func countSeeds(slice []int) map[int]int {
 	}
 
 	return set
+}
+
+func orderSeedsByFrequenceAndGetJokers(slice []int) ([]int, int) {
+	seeds := countSeeds(slice)
+
+	var jokers int
+	if j, ok := seeds[JokerVal]; ok {
+		jokers = j
+	}
+
+	ordered := []int{}
+	for i := 5; i >= 1; i-- {
+		ok := true
+		excluding := []int{JokerVal}
+
+		for ok {
+			var key int
+			if key, ok = mapContains(seeds, i, excluding...); ok {
+				excluding = append(excluding, key)
+				for j := 0; j < i; j++ {
+					ordered = append(ordered, key)
+				}
+			}
+		}
+	}
+
+	return ordered, jokers
 }
 
 func groupGamesByHandValue(games Games) map[int]Games {
